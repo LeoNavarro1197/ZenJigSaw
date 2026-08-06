@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Linq; // Necesario para buscar fichas fácilmente
 
 public class PuzzleManager : MonoBehaviour
 {
@@ -21,8 +22,15 @@ public class PuzzleManager : MonoBehaviour
     public RectTransform trayContent;
     public GameObject piecePrefab;
     public GameObject winPanel; // Un panel que dirá "¡Ganaste!"
+    public UnityEngine.UI.Image ghostImage;
 
     public ScrollRect trayScrollRect; // Arrastraremos aquí el BottomTray
+
+    [Header("Fondos de Tablero")]
+    public Image boardImage; // La imagen del tablero
+
+    [Header("Máscaras de Fichas")]
+    public Texture2D[] puzzleMasks; // Arrastraremos aquí todas tus máscaras
 
     private int totalPieces;
     private int placedPieces;
@@ -36,9 +44,23 @@ public class PuzzleManager : MonoBehaviour
 
     void Start()
     {
+        if (PuzzleDataCarrier.selectedImage != null)
+        {
+            imageToSlice = PuzzleDataCarrier.selectedImage;
+            columns = PuzzleDataCarrier.columns;
+            rows = PuzzleDataCarrier.rows;
+
+            // --- NUEVO: Actualizar la imagen del botón OJO ---
+            if (ghostImage != null)
+            {
+                // Convertimos la textura en un Sprite y la ponemos en la GhostImage
+                Sprite previewSprite = Sprite.Create(imageToSlice, new Rect(0, 0, imageToSlice.width, imageToSlice.height), new Vector2(0.5f, 0.5f));
+                ghostImage.sprite = previewSprite;
+            }
+        }
+
         GeneratePuzzle();
 
-        // Forzamos a que el scroll empiece en el lado izquierdo (0 = izquierda, 1 = derecha)
         if (trayScrollRect != null)
         {
             trayScrollRect.horizontalNormalizedPosition = 0f;
@@ -50,17 +72,30 @@ public class PuzzleManager : MonoBehaviour
         totalPieces = columns * rows;
         placedPieces = 0;
 
+        // 1. Forzamos a Unity a calcular el tamaño real del tablero AHORA MISMO
+        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(boardArea);
+
+        // 2. Inicializamos las pestañas matemáticas
+        ImageSlicer.InitTabs(columns, rows);
+
+        // 3. Cortamos la imagen (¡Ya no necesitamos máscara!)
         Sprite[] sprites = ImageSlicer.Slice(imageToSlice, columns, rows);
 
-        float pieceWidth = boardArea.rect.width / columns;
-        float pieceHeight = boardArea.rect.height / rows;
+        // 4. Tamaño matemático base (Forzado a ser cuadrado perfecto)
+        float minBoardSize = Mathf.Min(boardArea.rect.width, boardArea.rect.height);
+        float pieceWidth = minBoardSize / columns;
+        float pieceHeight = minBoardSize / rows;
+
+        // 5. Tamaño visual (texSize es pieceSize + 50% padding, así que multiplicamos por 1.5f)
+        float visualWidth = pieceWidth * 1.5f;
+        float visualHeight = pieceHeight * 1.5f;
 
         for (int i = 0; i < sprites.Length; i++)
         {
             GameObject newPiece = Instantiate(piecePrefab, trayContent);
             PuzzlePiece pp = newPiece.GetComponent<PuzzlePiece>();
             RectTransform rt = newPiece.GetComponent<RectTransform>();
-            Image img = newPiece.GetComponent<Image>();
+            UnityEngine.UI.Image img = newPiece.GetComponent<UnityEngine.UI.Image>();
 
             rt.anchorMin = new Vector2(0f, 1f);
             rt.anchorMax = new Vector2(0f, 1f);
@@ -68,17 +103,19 @@ public class PuzzleManager : MonoBehaviour
 
             img.preserveAspect = false;
             img.sprite = sprites[i];
+            img.alphaHitTestMinimumThreshold = 0.1f; // Solo tocar la parte sólida
 
-            // ¡AQUÍ ESTÁ LA MAGIA! 
-            // Le decimos a la ficha cuál será su tamaño cuando esté en el tablero
-            pp.boardSize = new Vector2(pieceWidth, pieceHeight);
-
-            // Pero la instanciamos en la bandeja con el tamaño fijo
+            // Asignamos el tamaño visual
+            // Asignamos el tamaño FIJO para la bandeja
             rt.sizeDelta = trayPieceSize;
+
+            // Pero le decimos que cuando vaya al tablero, se encoga al tamaño matemático
+            pp.boardSize = new Vector2(visualWidth, visualHeight);
 
             int col = i % columns;
             int row = i / columns;
 
+            // Posición matemática para el encaje (El centro es el mismo)
             float xPos = (col * pieceWidth) + (pieceWidth / 2);
             int invertedRow = (rows - 1) - row;
             float yPos = -((invertedRow * pieceHeight) + (pieceHeight / 2));
@@ -145,6 +182,55 @@ public class PuzzleManager : MonoBehaviour
                 // Devolvemos su tamaño al tamaño fijo de la bandeja
                 piece.GetComponent<RectTransform>().sizeDelta = trayPieceSize;
             }
+        }
+    }
+
+    // Función para ocultar o mostrar todas las fichas
+    public void SetPiecesVisibility(bool isVisible)
+    {
+        foreach (PuzzlePiece piece in allPieces)
+        {
+            // Si la ficha ya fue colocada correctamente, no la ocultamos
+            if (!piece.isPlacedCorrectly)
+            {
+                piece.gameObject.SetActive(isVisible);
+            }
+        }
+    }
+
+    // Función del botón de Ayuda (Hint)
+    public void UseHint()
+    {
+        // 1. Calculamos cuántas fichas colocar según el total (basado en nuestro GDD)
+        int piecesToPlace = 1;
+        if (totalPieces >= 225) piecesToPlace = 10;
+        else if (totalPieces >= 144) piecesToPlace = 6;
+        else if (totalPieces >= 100) piecesToPlace = 4;
+        else if (totalPieces >= 64) piecesToPlace = 3;
+        else if (totalPieces >= 36) piecesToPlace = 2;
+
+        // 2. Buscamos todas las fichas que aún NO han sido colocadas
+        List<PuzzlePiece> unplacedPieces = allPieces.Where(p => !p.isPlacedCorrectly).ToList();
+
+        // 3. Colocamos aleatoriamente la cantidad calculada (o las que queden)
+        for (int i = 0; i < piecesToPlace && unplacedPieces.Count > 0; i++)
+        {
+            int randomIndex = Random.Range(0, unplacedPieces.Count);
+            PuzzlePiece pieceToPlace = unplacedPieces[randomIndex];
+
+            // La colocamos y la quitamos de la lista de pendientes
+            pieceToPlace.PlaceAutomatically();
+            unplacedPieces.RemoveAt(randomIndex);
+        }
+    }
+
+    // Nueva función para cambiar la textura
+    public void SetBoardBackground(Sprite newBg)
+    {
+        if (boardImage != null)
+        {
+            boardImage.sprite = newBg;
+            boardImage.color = Color.white; // Aseguramos que no tenga tintes de color
         }
     }
 }

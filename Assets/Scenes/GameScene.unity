@@ -639,6 +639,7 @@ MonoBehaviour:
   trayContent: {fileID: 2025553558}
   piecePrefab: {fileID: 5046008833095938850, guid: b7f3639ae5507e346a830b50577459b7, type: 3}
   winPanel: {fileID: 1150457487}
+  ghostImage: {fileID: 2036582012}
   trayScrollRect: {fileID: 1759308323}
   boardImage: {fileID: 251244559}
   puzzleMasks: []

@@ -25,6 +25,12 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
         canvasGroup = GetComponent<CanvasGroup>();
         if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
         parentCanvas = GetComponentInParent<Canvas>();
+
+        // --- TOQUE DE DISEÑO 3D ---
+        // Añadimos una sombra para dar profundidad (solo 1 componente, no afecta el rendimiento)
+        Shadow shadow = gameObject.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0, 0, 0, 0.6f); // Sombra negra al 60% opacidad
+        shadow.effectDistance = new Vector2(4, -4); // Desplazada hacia abajo a la derecha
     }
 
     public void OnPointerDown(PointerEventData eventData)
@@ -126,5 +132,25 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
                 PuzzleManager.Instance.PiecePlaced();
             }
         }
+    }
+
+    // Esta función se llamará desde el botón de Ayuda
+    public void PlaceAutomatically()
+    {
+        if (isPlacedCorrectly) return; // Si ya está puesta, no hace nada
+
+        isPlacedCorrectly = true;
+        canvasGroup.blocksRaycasts = false;
+
+        // La sacamos de la bandeja y la pasamos al tablero
+        transform.SetParent(PuzzleManager.Instance.boardArea, true);
+        rectTransform.sizeDelta = boardSize;
+
+        // Animación suave hacia su posición correcta
+        rectTransform.DOAnchorPos(correctPosition, 0.3f).SetEase(Ease.OutBack);
+        transform.DOScale(1.1f, 0.1f).OnComplete(() => transform.DOScale(1f, 0.1f));
+
+        // Avisamos al Manager que una ficha más fue colocada
+        PuzzleManager.Instance.PiecePlaced();
     }
 }
