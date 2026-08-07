@@ -50,16 +50,17 @@ public class PuzzleManager : MonoBehaviour
             columns = PuzzleDataCarrier.columns;
             rows = PuzzleDataCarrier.rows;
 
-            // --- NUEVO: Actualizar la imagen del botón OJO ---
             if (ghostImage != null)
             {
-                // Convertimos la textura en un Sprite y la ponemos en la GhostImage
                 Sprite previewSprite = Sprite.Create(imageToSlice, new Rect(0, 0, imageToSlice.width, imageToSlice.height), new Vector2(0.5f, 0.5f));
                 ghostImage.sprite = previewSprite;
             }
         }
 
         GeneratePuzzle();
+
+        // ¡NUEVO: Cargar progreso guardado!
+        LoadSavedProgress();
 
         if (trayScrollRect != null)
         {
@@ -94,6 +95,7 @@ public class PuzzleManager : MonoBehaviour
         {
             GameObject newPiece = Instantiate(piecePrefab, trayContent);
             PuzzlePiece pp = newPiece.GetComponent<PuzzlePiece>();
+            pp.pieceID = i; // Le damos su ID original (0 a 15, por ejemplo)
             RectTransform rt = newPiece.GetComponent<RectTransform>();
             UnityEngine.UI.Image img = newPiece.GetComponent<UnityEngine.UI.Image>();
 
@@ -129,6 +131,56 @@ public class PuzzleManager : MonoBehaviour
         ShuffleTrayPieces();
     }
 
+    public void PiecePlaced()
+    {
+        placedPieces++;
+
+        // ¡NUEVO: Guardar progreso automáticamente!
+        SaveCurrentProgress();
+
+        if (placedPieces >= totalPieces)
+        {
+            WinGame();
+        }
+    }
+
+    public void SaveCurrentProgress()
+    {
+        System.Collections.Generic.List<int> placedIndices = new System.Collections.Generic.List<int>();
+        for (int i = 0; i < allPieces.Count; i++)
+        {
+            if (allPieces[i].isPlacedCorrectly)
+            {
+                // ¡CAMBIO AQUÍ! Guardamos la cédula (pieceID), no la posición en la lista
+                placedIndices.Add(allPieces[i].pieceID);
+            }
+        }
+        SaveSystem.SavePuzzle(PuzzleDataCarrier.currentPuzzleId, placedIndices.ToArray(), placedPieces >= totalPieces);
+    }
+
+    void LoadSavedProgress()
+    {
+        PuzzleSaveData data = SaveSystem.LoadPuzzle(PuzzleDataCarrier.currentPuzzleId);
+        if (data != null)
+        {
+            foreach (int savedID in data.placedPiecesIndices)
+            {
+                // Buscamos en la lista la ficha que tenga esa cédula
+                PuzzlePiece pieceToPlace = allPieces.Find(p => p.pieceID == savedID);
+
+                if (pieceToPlace != null && !pieceToPlace.isPlacedCorrectly)
+                {
+                    pieceToPlace.PlaceAutomatically();
+                }
+            }
+
+            if (data.isCompleted && placedPieces >= totalPieces)
+            {
+                WinGame();
+            }
+        }
+    }
+
     // Método para mezclar el orden visual de las fichas en la bandeja
     void ShuffleTrayPieces()
     {
@@ -146,18 +198,6 @@ public class PuzzleManager : MonoBehaviour
         for (int i = 0; i < allPieces.Count; i++)
         {
             allPieces[i].transform.SetSiblingIndex(i);
-        }
-    }
-
-    // Este método lo llama la ficha cuando encaja
-    public void PiecePlaced()
-    {
-        placedPieces++;
-
-        // Si todas las fichas están puestas
-        if (placedPieces >= totalPieces)
-        {
-            WinGame();
         }
     }
 
@@ -232,5 +272,21 @@ public class PuzzleManager : MonoBehaviour
             boardImage.sprite = newBg;
             boardImage.color = Color.white; // Aseguramos que no tenga tintes de color
         }
+    }
+
+    // Esto crea un botón en el Inspector de Unity para borrar los datos
+    [ContextMenu("Borrar Todos los Guardados")]
+    public void ClearAllSaves()
+    {
+        string path = Application.persistentDataPath;
+        System.IO.DirectoryInfo dir = new System.IO.DirectoryInfo(path);
+
+        // Busca todos los archivos .json en la carpeta de guardado y los borra
+        foreach (System.IO.FileInfo file in dir.GetFiles("*.json"))
+        {
+            file.Delete();
+        }
+
+        Debug.Log("¡Todos los guardados han sido borrados!");
     }
 }

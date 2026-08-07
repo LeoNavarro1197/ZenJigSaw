@@ -17,6 +17,8 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
     private Canvas parentCanvas;
     private Vector2 dragOffset;
 
+    [HideInInspector] public int pieceID; // Su cédula de identidad permanente
+
     private bool isDraggingPiece = false; // ¿Estamos arrastrando la ficha o haciendo scroll?
 
     void Awake()

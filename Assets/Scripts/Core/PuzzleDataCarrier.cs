@@ -1,15 +1,19 @@
 using UnityEngine;
 
-// Esta clase estática guarda los datos entre escenas
 public static class PuzzleDataCarrier
 {
     public static Texture2D selectedImage;
     public static int columns = 4;
     public static int rows = 4;
 
-    // Si la imagen viene de la galería, la convertimos a Sprite readable
+    // NUEVO: Identificador único para guardar el progreso
+    public static string currentPuzzleId = "Custom";
+    public static string currentPuzzleName = "Custom Puzzle";
+
     public static void SetCustomImage(Texture2D texture)
     {
         selectedImage = texture;
+        currentPuzzleId = "Custom_" + texture.GetHashCode(); // ID único basado en la foto
+        currentPuzzleName = "Mi Foto";
     }
 }
