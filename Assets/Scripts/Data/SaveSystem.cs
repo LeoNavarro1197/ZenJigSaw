@@ -4,20 +4,25 @@ using System.IO;
 [System.Serializable]
 public class PuzzleSaveData
 {
-    // Aquí guardamos qué piezas (por su índice) ya están encajadas
     public int[] placedPiecesIndices;
     public bool isCompleted = false;
+    public string customImagePath = "";
+    public int cols = 0; // NUEVO
+    public int rows = 0; // NUEVO
 }
 
 public static class SaveSystem
 {
     // Guarda el progreso de un rompecabezas específico por su nombre/ID
-    public static void SavePuzzle(string puzzleId, int[] placedIndices, bool isCompleted)
+    public static void SavePuzzle(string puzzleId, int[] placedIndices, bool isCompleted, string imagePath = "", int cols = 0, int rows = 0)
     {
         PuzzleSaveData data = new PuzzleSaveData
         {
             placedPiecesIndices = placedIndices,
-            isCompleted = isCompleted
+            isCompleted = isCompleted,
+            customImagePath = imagePath,
+            cols = cols, // NUEVO
+            rows = rows  // NUEVO
         };
 
         string json = JsonUtility.ToJson(data, true);

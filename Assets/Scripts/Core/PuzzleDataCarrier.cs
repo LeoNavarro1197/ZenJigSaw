@@ -10,6 +10,10 @@ public static class PuzzleDataCarrier
     public static string currentPuzzleId = "Custom";
     public static string currentPuzzleName = "Custom Puzzle";
 
+    // Nuevas variables para fotos personalizadas
+    public static bool isCustomPuzzle = false;
+    public static string customImagePath = "";
+
     public static void SetCustomImage(Texture2D texture)
     {
         selectedImage = texture;

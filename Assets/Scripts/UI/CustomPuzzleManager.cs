@@ -51,16 +51,27 @@ public class CustomPuzzleManager : MonoBehaviour
         // 1. Obtenemos la foto ya recortada en cuadrado perfecto
         Texture2D finalCroppedImage = cropManager.GetCroppedTexture();
 
-        // 2. La enviamos al juego
-        PuzzleDataCarrier.SetCustomImage(finalCroppedImage);
+        // 2. Guardamos la foto en el teléfono como JPG
+        byte[] jpgBytes = finalCroppedImage.EncodeToJPG();
+        string customId = "Custom_" + System.DateTime.Now.Ticks;
+        string imgPath = System.IO.Path.Combine(Application.persistentDataPath, customId + ".jpg");
+        System.IO.File.WriteAllBytes(imgPath, jpgBytes);
 
+        // 3. Enviamos los datos al juego
+        PuzzleDataCarrier.SetCustomImage(finalCroppedImage);
+        PuzzleDataCarrier.currentPuzzleId = customId;
+        PuzzleDataCarrier.currentPuzzleName = "Mi Foto";
+        PuzzleDataCarrier.isCustomPuzzle = true; // Marcamos que es custom
+        PuzzleDataCarrier.customImagePath = imgPath; // Guardamos la ruta
+
+        // 4. Calculamos la dificultad
         int totalPieces = selectedDifficulty;
         int cols = Mathf.CeilToInt(Mathf.Sqrt(totalPieces));
         int rows = Mathf.CeilToInt((float)totalPieces / cols);
         PuzzleDataCarrier.columns = cols;
         PuzzleDataCarrier.rows = rows;
 
-        // 3. Cargamos la escena
+        // 5. Cargamos la escena
         SceneManager.LoadScene("GameScene");
     }
 }

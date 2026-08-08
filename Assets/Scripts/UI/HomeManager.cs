@@ -2,24 +2,26 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
+using System.Collections.Generic;
 
 public class HomeManager : MonoBehaviour
 {
     [Header("Base de Datos")]
-    public PuzzleLevelData[] puzzlePacks; // Arrastraremos aquí los Packs (ej. NaturePack)
+    public PuzzleLevelData[] puzzlePacks;
 
     [Header("UI")]
-    public Transform gridContent; // Arrastraremos aquí el Content del Scroll
-    public GameObject cardPrefab;  // Arrastraremos aquí el PuzzleCard_Prefab
+    public Transform gridContent;
+    public GameObject cardPrefab;
 
     void Start()
     {
-        GenerateHomeGrid();
+        GenerateHomeGrid("All"); // Mostrar todos al iniciar
     }
 
-    void GenerateHomeGrid()
+    // Llamaremos a esta función desde los botones de categoría
+    public void GenerateHomeGrid(string filter)
     {
-        // Limpiar la cuadrícula por si acaso
+        // Limpiar la cuadrícula
         foreach (Transform child in gridContent)
         {
             Destroy(child.gameObject);
@@ -27,62 +29,64 @@ public class HomeManager : MonoBehaviour
 
         foreach (PuzzleLevelData pack in puzzlePacks)
         {
-            foreach (PuzzleItem item in pack.puzzles)
+            // Si el filtro es "All", mostramos todo. Si no, solo si el nombre del pack coincide
+            if (filter == "All" || filter == pack.packName)
             {
-                GameObject newCard = Instantiate(cardPrefab, gridContent);
-
-                // 1. Poner la imagen
-                Image cardImage = newCard.GetComponent<Image>();
-                if (cardImage != null)
-                {
-                    cardImage.sprite = item.puzzleImage;
-                    cardImage.preserveAspect = false;
-                }
-
-                // 2. Buscar los textos
-                TextMeshProUGUI[] texts = newCard.GetComponentsInChildren<TextMeshProUGUI>();
-                TextMeshProUGUI statusText = null;
-
-                foreach (TextMeshProUGUI txt in texts)
-                {
-                    if (txt.name == "NameText") txt.text = item.puzzleName;
-                    if (txt.name == "PiecesText") txt.text = item.defaultPieces + " Pieces";
-                    if (txt.name == "StatusText") statusText = txt; // Guardamos la referencia del texto de estado
-                }
-
-                // 3. ¡LEER EL PROGRESO GUARDADO!
-                if (statusText != null)
-                {
-                    // Cargamos el archivo de guardado usando el nombre del rompecabezas
-                    PuzzleSaveData data = SaveSystem.LoadPuzzle(item.puzzleName);
-
-                    if (data != null) // Si existe un guardado...
-                    {
-                        if (data.isCompleted)
-                        {
-                            statusText.text = "COMPLETED";
-                            statusText.color = Color.green;
-                        }
-                        else
-                        {
-                            // Calculamos el porcentaje
-                            float percentage = ((float)data.placedPiecesIndices.Length / item.defaultPieces) * 100f;
-                            statusText.text = Mathf.RoundToInt(percentage) + "%";
-                            statusText.color = Color.yellow;
-                        }
-                    }
-                    else // Si no hay guardado, es nuevo
-                    {
-                        statusText.text = "NEW";
-                        statusText.color = Color.cyan; // O el color que prefieras
-                    }
-                }
-
-                // 4. Configurar el botón
-                Button btn = newCard.GetComponent<Button>();
-                PuzzleItem capturedItem = item;
-                btn.onClick.AddListener(() => LoadDefaultPuzzle(capturedItem));
+                PopulateGrid(pack);
             }
+        }
+    }
+
+    void PopulateGrid(PuzzleLevelData pack)
+    {
+        foreach (PuzzleItem item in pack.puzzles)
+        {
+            GameObject newCard = Instantiate(cardPrefab, gridContent);
+
+            Image cardImage = newCard.GetComponent<Image>();
+            if (cardImage != null)
+            {
+                cardImage.sprite = item.puzzleImage;
+                cardImage.preserveAspect = false;
+            }
+
+            TextMeshProUGUI[] texts = newCard.GetComponentsInChildren<TextMeshProUGUI>();
+            TextMeshProUGUI statusText = null;
+
+            foreach (TextMeshProUGUI txt in texts)
+            {
+                if (txt.name == "NameText") txt.text = item.puzzleName;
+                if (txt.name == "PiecesText") txt.text = item.defaultPieces + " Pieces";
+                if (txt.name == "StatusText") statusText = txt;
+            }
+
+            if (statusText != null)
+            {
+                PuzzleSaveData data = SaveSystem.LoadPuzzle(item.puzzleName);
+                if (data != null)
+                {
+                    if (data.isCompleted)
+                    {
+                        statusText.text = "COMPLETED";
+                        statusText.color = Color.green;
+                    }
+                    else
+                    {
+                        float percentage = ((float)data.placedPiecesIndices.Length / item.defaultPieces) * 100f;
+                        statusText.text = Mathf.RoundToInt(percentage) + "%";
+                        statusText.color = Color.yellow;
+                    }
+                }
+                else
+                {
+                    statusText.text = "NEW";
+                    statusText.color = Color.cyan;
+                }
+            }
+
+            Button btn = newCard.GetComponent<Button>();
+            PuzzleItem capturedItem = item;
+            btn.onClick.AddListener(() => LoadDefaultPuzzle(capturedItem));
         }
     }
 
@@ -91,7 +95,7 @@ public class HomeManager : MonoBehaviour
         if (selectedItem.puzzleImage.texture.isReadable)
         {
             PuzzleDataCarrier.SetCustomImage(selectedItem.puzzleImage.texture);
-            PuzzleDataCarrier.currentPuzzleId = selectedItem.puzzleName; // ¡NUEVO ID!
+            PuzzleDataCarrier.currentPuzzleId = selectedItem.puzzleName;
             PuzzleDataCarrier.currentPuzzleName = selectedItem.puzzleName;
 
             int totalPieces = selectedItem.defaultPieces;

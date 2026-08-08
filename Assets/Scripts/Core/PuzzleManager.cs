@@ -26,6 +26,8 @@ public class PuzzleManager : MonoBehaviour
 
     public ScrollRect trayScrollRect; // Arrastraremos aquí el BottomTray
 
+    public GameObject loadingPanel;
+
     [Header("Fondos de Tablero")]
     public Image boardImage; // La imagen del tablero
 
@@ -44,6 +46,18 @@ public class PuzzleManager : MonoBehaviour
 
     void Start()
     {
+        StartCoroutine(StartGameRoutine());
+    }
+
+    System.Collections.IEnumerator StartGameRoutine()
+    {
+        // 1. Mostramos el panel de carga
+        if (loadingPanel != null) loadingPanel.SetActive(true);
+
+        // 2. Esperamos un fotograma para que Unity dibuje el panel en pantalla
+        yield return null;
+
+        // 3. Cargamos los datos
         if (PuzzleDataCarrier.selectedImage != null)
         {
             imageToSlice = PuzzleDataCarrier.selectedImage;
@@ -57,15 +71,14 @@ public class PuzzleManager : MonoBehaviour
             }
         }
 
+        // 4. Generamos las fichas (Aquí el juego se congelará un segundo)
         GeneratePuzzle();
-
-        // ¡NUEVO: Cargar progreso guardado!
         LoadSavedProgress();
 
-        if (trayScrollRect != null)
-        {
-            trayScrollRect.horizontalNormalizedPosition = 0f;
-        }
+        if (trayScrollRect != null) trayScrollRect.horizontalNormalizedPosition = 0f;
+
+        // 5. Ocultamos el panel de carga
+        if (loadingPanel != null) loadingPanel.SetActive(false);
     }
 
     void GeneratePuzzle()
@@ -151,11 +164,14 @@ public class PuzzleManager : MonoBehaviour
         {
             if (allPieces[i].isPlacedCorrectly)
             {
-                // ¡CAMBIO AQUÍ! Guardamos la cédula (pieceID), no la posición en la lista
                 placedIndices.Add(allPieces[i].pieceID);
             }
         }
-        SaveSystem.SavePuzzle(PuzzleDataCarrier.currentPuzzleId, placedIndices.ToArray(), placedPieces >= totalPieces);
+
+        string imgPath = PuzzleDataCarrier.isCustomPuzzle ? PuzzleDataCarrier.customImagePath : "";
+
+        // NUEVO: Pasamos columns y rows al guardar
+        SaveSystem.SavePuzzle(PuzzleDataCarrier.currentPuzzleId, placedIndices.ToArray(), placedPieces >= totalPieces, imgPath, PuzzleDataCarrier.columns, PuzzleDataCarrier.rows);
     }
 
     void LoadSavedProgress()
@@ -165,19 +181,13 @@ public class PuzzleManager : MonoBehaviour
         {
             foreach (int savedID in data.placedPiecesIndices)
             {
-                // Buscamos en la lista la ficha que tenga esa cédula
                 PuzzlePiece pieceToPlace = allPieces.Find(p => p.pieceID == savedID);
-
                 if (pieceToPlace != null && !pieceToPlace.isPlacedCorrectly)
                 {
                     pieceToPlace.PlaceAutomatically();
                 }
             }
-
-            if (data.isCompleted && placedPieces >= totalPieces)
-            {
-                WinGame();
-            }
+            if (data.isCompleted && placedPieces >= totalPieces) WinGame();
         }
     }
 
