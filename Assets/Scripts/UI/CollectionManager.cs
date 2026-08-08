@@ -10,10 +10,15 @@ public class CollectionManager : MonoBehaviour
     public Transform gridContent;
     public GameObject cardPrefab;
 
+    [Header("UI de Estado")]
+    public GameObject emptyStateText; // Arrastraremos aquí el texto de "Vacío"
+
     public void UpdateCollection()
     {
         // Limpiar la cuadrícula
         foreach (Transform child in gridContent) Destroy(child.gameObject);
+
+        int instantiatedCount = 0; // Contador para saber si hay algo
 
         // 1. Revisar los rompecabezas predeterminados
         foreach (PuzzleLevelData pack in puzzlePacks)
@@ -21,11 +26,11 @@ public class CollectionManager : MonoBehaviour
             foreach (PuzzleItem item in pack.puzzles)
             {
                 PuzzleSaveData data = SaveSystem.LoadPuzzle(item.puzzleName);
-                if (data != null) // Si existe guardado (a medias o completado)
+                if (data != null) // Si existe guardado
                 {
                     GameObject newCard = Instantiate(cardPrefab, gridContent);
-                    // Pasamos la textura del scriptable object
                     SetupCard(newCard, item.puzzleImage, item.puzzleName, item.defaultPieces, data, item.puzzleImage.texture, item.puzzleName, "");
+                    instantiatedCount++;
                 }
             }
         }
@@ -51,16 +56,23 @@ public class CollectionManager : MonoBehaviour
 
                     string puzzleId = file.Name.Replace(".json", "");
                     int totalPieces = data.cols * data.rows;
+                    // Seguridad anti-cero por si el guardado es viejo
+                    if (totalPieces <= 0) totalPieces = data.placedPiecesIndices.Length;
 
                     GameObject newCard = Instantiate(cardPrefab, gridContent);
-                    // Pasamos la textura cargada del teléfono
                     SetupCard(newCard, customSprite, "Mi Foto", totalPieces, data, tex, puzzleId, data.customImagePath);
+                    instantiatedCount++;
                 }
             }
         }
+
+        // 3. Mostrar u ocultar el texto de "Vacío"
+        if (emptyStateText != null)
+        {
+            emptyStateText.SetActive(instantiatedCount == 0);
+        }
     }
 
-    // Configura la tarjeta visualmente y le añade la función de clic
     void SetupCard(GameObject card, Sprite img, string name, int totalPieces, PuzzleSaveData data, Texture2D tex, string puzzleId, string imgPath)
     {
         Image cardImage = card.GetComponent<Image>();
@@ -76,7 +88,11 @@ public class CollectionManager : MonoBehaviour
         foreach (TextMeshProUGUI txt in texts)
         {
             if (txt.name == "NameText") txt.text = name;
-            if (txt.name == "PiecesText") txt.text = totalPieces + " Pieces";
+            if (txt.name == "PiecesText")
+            {
+                txt.text = totalPieces + " Pieces";
+                txt.color = GetDifficultyColor(totalPieces); // ¡Color por dificultad!
+            }
             if (txt.name == "StatusText") statusText = txt;
         }
 
@@ -89,21 +105,21 @@ public class CollectionManager : MonoBehaviour
             }
             else
             {
-                float percentage = ((float)data.placedPiecesIndices.Length / totalPieces) * 100f;
+                float percentage = totalPieces > 0 ? ((float)data.placedPiecesIndices.Length / totalPieces) * 100f : 0;
                 statusText.text = Mathf.RoundToInt(percentage) + "%";
                 statusText.color = Color.yellow;
             }
         }
 
-        // AÑADIR FUNCIÓN DE CLIC
         Button btn = card.GetComponent<Button>();
         if (btn != null)
         {
-            btn.onClick.AddListener(() => LoadPuzzle(tex, name, puzzleId, data.cols, data.rows, imgPath));
+            int safeCols = data.cols > 0 ? data.cols : Mathf.CeilToInt(Mathf.Sqrt(totalPieces));
+            int safeRows = data.rows > 0 ? data.rows : Mathf.CeilToInt((float)totalPieces / safeCols);
+            btn.onClick.AddListener(() => LoadPuzzle(tex, name, puzzleId, safeCols, safeRows, imgPath));
         }
     }
 
-    // Carga el rompecabezas seleccionado
     void LoadPuzzle(Texture2D tex, string name, string puzzleId, int cols, int rows, string imgPath)
     {
         PuzzleDataCarrier.selectedImage = tex;
@@ -123,5 +139,13 @@ public class CollectionManager : MonoBehaviour
         }
 
         SceneManager.LoadScene("GameScene");
+    }
+
+    // Función para pintar el texto de piezas según la dificultad
+    Color GetDifficultyColor(int pieces)
+    {
+        if (pieces <= 36) return Color.green;      // Fácil (Verde)
+        if (pieces <= 100) return Color.yellow;    // Medio (Amarillo)
+        return Color.red;                          // Difícil (Rojo)
     }
 }

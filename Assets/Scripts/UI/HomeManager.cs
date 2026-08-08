@@ -56,7 +56,11 @@ public class HomeManager : MonoBehaviour
             foreach (TextMeshProUGUI txt in texts)
             {
                 if (txt.name == "NameText") txt.text = item.puzzleName;
-                if (txt.name == "PiecesText") txt.text = item.defaultPieces + " Pieces";
+                if (txt.name == "PiecesText")
+                {
+                    txt.text = item.defaultPieces + " Pieces";
+                    txt.color = GetDifficultyColor(item.defaultPieces); // ¡Color por dificultad!
+                }
                 if (txt.name == "StatusText") statusText = txt;
             }
 
@@ -74,7 +78,7 @@ public class HomeManager : MonoBehaviour
                     {
                         float percentage = ((float)data.placedPiecesIndices.Length / item.defaultPieces) * 100f;
                         statusText.text = Mathf.RoundToInt(percentage) + "%";
-                        statusText.color = Color.yellow;
+                        statusText.color = GetDifficultyColor(item.defaultPieces);
                     }
                 }
                 else
@@ -107,5 +111,13 @@ public class HomeManager : MonoBehaviour
 
             SceneManager.LoadScene("GameScene");
         }
+    }
+
+    // Función para pintar el texto de piezas según la dificultad
+    Color GetDifficultyColor(int pieces)
+    {
+        if (pieces <= 36) return Color.green;      // Fácil (Verde)
+        if (pieces <= 100) return Color.yellow;    // Medio (Amarillo)
+        return Color.red;                          // Difícil (Rojo)
     }
 }

@@ -27,12 +27,6 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
         canvasGroup = GetComponent<CanvasGroup>();
         if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
         parentCanvas = GetComponentInParent<Canvas>();
-
-        // --- TOQUE DE DISEÑO 3D ---
-        // Añadimos una sombra para dar profundidad (solo 1 componente, no afecta el rendimiento)
-        Shadow shadow = gameObject.AddComponent<Shadow>();
-        shadow.effectColor = new Color(0, 0, 0, 0.6f); // Sombra negra al 60% opacidad
-        shadow.effectDistance = new Vector2(4, -4); // Desplazada hacia abajo a la derecha
     }
 
     public void OnPointerDown(PointerEventData eventData)

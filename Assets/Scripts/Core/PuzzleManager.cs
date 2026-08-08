@@ -28,11 +28,14 @@ public class PuzzleManager : MonoBehaviour
 
     public GameObject loadingPanel;
 
-    [Header("Fondos de Tablero")]
-    public Image boardImage; // La imagen del tablero
-
     [Header("Máscaras de Fichas")]
     public Texture2D[] puzzleMasks; // Arrastraremos aquí todas tus máscaras
+
+    [Header("Fondos de Tablero")]
+    public Sprite[] availableBackgrounds; // Arrastraremos aquí las texturas de madera, corcho, etc.
+    public Image boardImage;
+
+    private const string BG_PREF_KEY = "SelectedBackgroundIndex"; // Clave para guardar
 
     private int totalPieces;
     private int placedPieces;
@@ -71,11 +74,17 @@ public class PuzzleManager : MonoBehaviour
             }
         }
 
-        // 4. Generamos las fichas (Aquí el juego se congelará un segundo)
+        // Cargar el fondo guardado por el jugador
+        LoadSavedBackground();
+
+        // 4. Generamos las fichas y cargamos el progreso (¡Solo una vez!)
         GeneratePuzzle();
         LoadSavedProgress();
 
-        if (trayScrollRect != null) trayScrollRect.horizontalNormalizedPosition = 0f;
+        if (trayScrollRect != null)
+        {
+            trayScrollRect.horizontalNormalizedPosition = 0f;
+        }
 
         // 5. Ocultamos el panel de carga
         if (loadingPanel != null) loadingPanel.SetActive(false);
@@ -83,6 +92,13 @@ public class PuzzleManager : MonoBehaviour
 
     void GeneratePuzzle()
     {
+        // ¡RED DE SEGURIDAD! Limpiamos la bandeja por si acaso se llamó dos veces
+        foreach (Transform child in trayContent)
+        {
+            Destroy(child.gameObject);
+        }
+        allPieces.Clear(); // Limpiamos la lista de fichas
+
         totalPieces = columns * rows;
         placedPieces = 0;
 
@@ -100,10 +116,6 @@ public class PuzzleManager : MonoBehaviour
         float pieceWidth = minBoardSize / columns;
         float pieceHeight = minBoardSize / rows;
 
-        // 5. Tamaño visual (texSize es pieceSize + 50% padding, así que multiplicamos por 1.5f)
-        float visualWidth = pieceWidth * 1.5f;
-        float visualHeight = pieceHeight * 1.5f;
-
         for (int i = 0; i < sprites.Length; i++)
         {
             GameObject newPiece = Instantiate(piecePrefab, trayContent);
@@ -120,12 +132,15 @@ public class PuzzleManager : MonoBehaviour
             img.sprite = sprites[i];
             img.alphaHitTestMinimumThreshold = 0.1f; // Solo tocar la parte sólida
 
-            // Asignamos el tamaño visual
-            // Asignamos el tamaño FIJO para la bandeja
-            rt.sizeDelta = trayPieceSize;
+            // 1. Calculamos el tamaño visual para el tablero (1.5 veces más grande para las pestañas)
+            float visualWidth = pieceWidth * 1.5f;
+            float visualHeight = pieceHeight * 1.5f;
 
-            // Pero le decimos que cuando vaya al tablero, se encoga al tamaño matemático
+            // 2. Le decimos a la ficha cuál será su tamaño cuando vaya al tablero
             pp.boardSize = new Vector2(visualWidth, visualHeight);
+
+            // 3. PERO en la bandeja, la instanciamos con el TAMAÑO FIJO que configuramos
+            rt.sizeDelta = trayPieceSize;
 
             int col = i % columns;
             int row = i / columns;
@@ -274,13 +289,32 @@ public class PuzzleManager : MonoBehaviour
         }
     }
 
-    // Nueva función para cambiar la textura
-    public void SetBoardBackground(Sprite newBg)
+    // Esta función la llamará el Popup cuando el jugador elija un fondo
+    public void SetBoardBackground(int bgIndex)
     {
-        if (boardImage != null)
+        if (availableBackgrounds.Length > 0 && bgIndex >= 0 && bgIndex < availableBackgrounds.Length)
         {
-            boardImage.sprite = newBg;
-            boardImage.color = Color.white; // Aseguramos que no tenga tintes de color
+            boardImage.sprite = availableBackgrounds[bgIndex];
+            boardImage.color = Color.white; // Aseguramos que no tenga tinte
+
+            // ¡Lo guardamos en la memoria DEL TELEFONO usando el ID de este puzzle!
+            string bgKey = PuzzleDataCarrier.currentPuzzleId + "_bg";
+            PlayerPrefs.SetInt(bgKey, bgIndex);
+            PlayerPrefs.Save();
+        }
+    }
+
+    // Carga el fondo al abrir el juego
+    void LoadSavedBackground()
+    {
+        if (availableBackgrounds.Length > 0)
+        {
+            // Buscamos si este puzzle específico ya tiene un fondo guardado
+            string bgKey = PuzzleDataCarrier.currentPuzzleId + "_bg";
+            int savedIndex = PlayerPrefs.GetInt(bgKey, 0); // Si no, usa el 0 por defecto
+
+            boardImage.sprite = availableBackgrounds[savedIndex];
+            boardImage.color = Color.white;
         }
     }
 

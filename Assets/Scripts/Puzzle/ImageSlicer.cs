@@ -76,7 +76,6 @@ public static class ImageSlicer
                         srcY = Mathf.Clamp(srcY, 0, image.height - 1);
 
                         Color userColor = image.GetPixel(srcX, srcY);
-                        Color finalColor = userColor;
 
                         // Coordenadas UV locales (0 a 1) para esta ficha
                         float u = (float)(x - padding) / pieceSize;
@@ -85,13 +84,18 @@ public static class ImageSlicer
                         // ¿Está el píxel dentro de la forma de la ficha?
                         bool isInside = IsInsidePiece(u, v, col, row, columns, rows);
 
-                        finalColor.a = isInside ? userColor.a : 0f;
+                        // Si está dentro, usa el color de la foto. Si no, Color.clear (RGB y Alpha a 0)
+                        Color finalColor = isInside ? userColor : Color.clear;
+
                         pixels[y * texSize + x] = finalColor;
                     }
                 }
 
+                // ¡Filtro Point para que los bordes sean nítidos y no queden huecos transparentes!
+                pieceTex.filterMode = FilterMode.Point;
                 pieceTex.SetPixels(pixels);
                 pieceTex.Apply();
+
                 // El sprite es texSize, pero el PixelsPerUnit es pieceSize para que el escalado de la UI sea correcto
                 pieces[index] = Sprite.Create(pieceTex, new Rect(0, 0, texSize, texSize), new Vector2(0.5f, 0.5f), pieceSize);
                 index++;

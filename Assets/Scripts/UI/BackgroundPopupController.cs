@@ -1,26 +1,23 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 public class BackgroundPopupController : MonoBehaviour
 {
-    public GameObject popupObject; // El BackgroundPopup completo
+    public GameObject popupObject;
 
-    // Función para abrir el menú (la llamaremos desde el botón)
     public void OpenPopup()
     {
         popupObject.SetActive(true);
     }
 
-    // Función para cerrar el menú (la llamaremos desde la X)
     public void ClosePopup()
     {
         popupObject.SetActive(false);
     }
 
-    // Función para aplicar el fondo (la llamaremos desde los botones de texturas)
-    public void SelectBackground(Sprite selectedSprite)
+    // Llamaremos a esta función desde los botones, pasándole el número (0, 1, 2...)
+    public void SelectBackground(int bgIndex)
     {
-        PuzzleManager.Instance.SetBoardBackground(selectedSprite);
-        ClosePopup(); // Cerramos el popup después de elegir
+        PuzzleManager.Instance.SetBoardBackground(bgIndex);
+        ClosePopup();
     }
 }
