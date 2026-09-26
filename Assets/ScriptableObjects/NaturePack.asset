@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PuzzleLevelData
   packName: Naturaleza
   puzzles:
-  - puzzleName: Paisaje
+  - puzzleName: Landscape
     puzzleImage: {fileID: 21300000, guid: 71ca3e3c107257d4491f6d59735cb785, type: 3}
     defaultPieces: 16
-  - puzzleName: "\xC1rbol"
+  - puzzleName: Tree
     puzzleImage: {fileID: 21300000, guid: 95baf37fb2f816e4bbd233049d644fb5, type: 3}
     defaultPieces: 64
-  - puzzleName: Tablas
+  - puzzleName: Tables
     puzzleImage: {fileID: 21300000, guid: 59a254dd4b7745445a98954df3d721b1, type: 3}
     defaultPieces: 255

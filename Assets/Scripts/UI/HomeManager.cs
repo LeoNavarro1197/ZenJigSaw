@@ -6,6 +6,8 @@ using System.Collections.Generic;
 
 public class HomeManager : MonoBehaviour
 {
+    public static HomeManager Instance;
+
     [Header("Base de Datos")]
     public PuzzleLevelData[] puzzlePacks;
 
@@ -13,26 +15,53 @@ public class HomeManager : MonoBehaviour
     public Transform gridContent;
     public GameObject cardPrefab;
 
-    void Start()
+    [HideInInspector] public string currentFilter = "All";
+
+    // El color que me pediste: #4E614F
+    private Color customTextColor = new Color(78f / 255f, 97f / 255f, 79f / 255f);
+
+    void Awake()
     {
-        GenerateHomeGrid("All"); // Mostrar todos al iniciar
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
-    // Llamaremos a esta función desde los botones de categoría
+    void Start()
+    {
+        GenerateHomeGrid("All");
+    }
+
     public void GenerateHomeGrid(string filter)
     {
-        // Limpiar la cuadrícula
+        currentFilter = filter;
+
+        // Limpiar la cuadrícula (¡TRUCO DEL DESTROY! Renombramos para que Find no los encuentre)
         foreach (Transform child in gridContent)
         {
+            child.name = "Destroyed";
             Destroy(child.gameObject);
         }
 
+        // 1. Mostrar rompecabezas locales (ScriptableObjects)
         foreach (PuzzleLevelData pack in puzzlePacks)
         {
-            // Si el filtro es "All", mostramos todo. Si no, solo si el nombre del pack coincide
             if (filter == "All" || filter == pack.packName)
             {
                 PopulateGrid(pack);
+            }
+        }
+
+        // 2. Mostrar rompecabezas de Firebase (desde la caché de RAM)
+        if (FirebaseManager.cachedDynamicPuzzles.Count > 0)
+        {
+            foreach (var dp in FirebaseManager.cachedDynamicPuzzles)
+            {
+                if (filter == "All" || filter == dp.category)
+                {
+                    CreateDynamicCardPlaceholder(dp.name, dp.pieces, dp.category);
+                    Sprite img = Sprite.Create(dp.tex, new Rect(0, 0, dp.tex.width, dp.tex.height), new Vector2(0.5f, 0.5f));
+                    SetDynamicCardImage(dp.name, img, dp.tex, dp.pieces, dp.category);
+                }
             }
         }
     }
@@ -43,11 +72,14 @@ public class HomeManager : MonoBehaviour
         {
             GameObject newCard = Instantiate(cardPrefab, gridContent);
 
-            Image cardImage = newCard.GetComponent<Image>();
+            Image cardImage = newCard.transform.Find("ImageMask/PuzzlePhoto").GetComponent<Image>();
             if (cardImage != null)
             {
                 cardImage.sprite = item.puzzleImage;
                 cardImage.preserveAspect = false;
+
+                Transform spinner = newCard.transform.Find("ImageMask/LoadingSpinner");
+                if (spinner != null) spinner.gameObject.SetActive(false);
             }
 
             TextMeshProUGUI[] texts = newCard.GetComponentsInChildren<TextMeshProUGUI>();
@@ -55,12 +87,9 @@ public class HomeManager : MonoBehaviour
 
             foreach (TextMeshProUGUI txt in texts)
             {
+                txt.color = customTextColor; // Aplicamos tu color
                 if (txt.name == "NameText") txt.text = item.puzzleName;
-                if (txt.name == "PiecesText")
-                {
-                    txt.text = item.defaultPieces + " Pieces";
-                    txt.color = GetDifficultyColor(item.defaultPieces); // ¡Color por dificultad!
-                }
+                if (txt.name == "PiecesText") txt.text = item.defaultPieces + " Pieces";
                 if (txt.name == "StatusText") statusText = txt;
             }
 
@@ -69,23 +98,14 @@ public class HomeManager : MonoBehaviour
                 PuzzleSaveData data = SaveSystem.LoadPuzzle(item.puzzleName);
                 if (data != null)
                 {
-                    if (data.isCompleted)
-                    {
-                        statusText.text = "COMPLETED";
-                        statusText.color = Color.green;
-                    }
+                    if (data.isCompleted) statusText.text = "Completed";
                     else
                     {
                         float percentage = ((float)data.placedPiecesIndices.Length / item.defaultPieces) * 100f;
                         statusText.text = Mathf.RoundToInt(percentage) + "%";
-                        statusText.color = GetDifficultyColor(item.defaultPieces);
                     }
                 }
-                else
-                {
-                    statusText.text = "NEW";
-                    statusText.color = Color.cyan;
-                }
+                else statusText.text = "New";
             }
 
             Button btn = newCard.GetComponent<Button>();
@@ -94,8 +114,88 @@ public class HomeManager : MonoBehaviour
         }
     }
 
+    // 1. Crea la tarjeta inmediatamente con el spinner girando
+    public void CreateDynamicCardPlaceholder(string name, int pieces, string category)
+    {
+        if (!gameObject.activeInHierarchy) return;
+        if (currentFilter != "All" && currentFilter != category) return;
+        if (gridContent.Find("Card_" + name) != null) return;
+
+        GameObject newCard = Instantiate(cardPrefab, gridContent);
+        newCard.name = "Card_" + name; // Nombre único
+
+        Image cardImage = newCard.transform.Find("ImageMask/PuzzlePhoto").GetComponent<Image>();
+        if (cardImage != null) cardImage.color = new Color(1, 1, 1, 0); // Invisible
+
+        TextMeshProUGUI[] texts = newCard.GetComponentsInChildren<TextMeshProUGUI>();
+        TextMeshProUGUI statusText = null;
+
+        foreach (TextMeshProUGUI txt in texts)
+        {
+            txt.color = customTextColor; // Aplicamos tu color
+            if (txt.name == "NameText") txt.text = name;
+            if (txt.name == "PiecesText") txt.text = pieces + " Pieces";
+            if (txt.name == "StatusText") statusText = txt;
+        }
+
+        // ¡NUEVO! Leemos el progreso guardado para mostrar el % o "Completed"
+        if (statusText != null)
+        {
+            // Usamos el "name" de Firebase como ID para buscar el archivo .json
+            PuzzleSaveData data = SaveSystem.LoadPuzzle(name);
+            if (data != null)
+            {
+                if (data.isCompleted)
+                {
+                    statusText.text = "Completed";
+                }
+                else
+                {
+                    float percentage = ((float)data.placedPiecesIndices.Length / pieces) * 100f;
+                    statusText.text = Mathf.RoundToInt(percentage) + "%";
+                }
+            }
+            else
+            {
+                statusText.text = "New"; // Si no hay guardado, es nuevo
+            }
+        }
+    }
+
+    public void SetDynamicCardImage(string name, Sprite img, Texture2D tex, int pieces, string category)
+    {
+        if (!gameObject.activeInHierarchy) return;
+        if (currentFilter != "All" && currentFilter != category) return;
+
+        Transform cardTransform = gridContent.Find("Card_" + name);
+        if (cardTransform == null)
+        {
+            CreateDynamicCardPlaceholder(name, pieces, category);
+            cardTransform = gridContent.Find("Card_" + name);
+            if (cardTransform == null) return;
+        }
+
+        GameObject newCard = cardTransform.gameObject;
+
+        Image cardImage = newCard.transform.Find("ImageMask/PuzzlePhoto").GetComponent<Image>();
+        if (cardImage != null)
+        {
+            cardImage.sprite = img;
+            cardImage.color = Color.white;
+        }
+
+        Transform spinner = newCard.transform.Find("ImageMask/LoadingSpinner");
+        if (spinner != null) spinner.gameObject.SetActive(false);
+
+        Button btn = newCard.GetComponent<Button>();
+        btn.onClick.RemoveAllListeners();
+        btn.onClick.AddListener(() => LoadDynamicPuzzle(tex, name, pieces));
+    }
+
     void LoadDefaultPuzzle(PuzzleItem selectedItem)
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayButtonClick();
+
         if (selectedItem.puzzleImage.texture.isReadable)
         {
             PuzzleDataCarrier.SetCustomImage(selectedItem.puzzleImage.texture);
@@ -113,11 +213,20 @@ public class HomeManager : MonoBehaviour
         }
     }
 
-    // Función para pintar el texto de piezas según la dificultad
-    Color GetDifficultyColor(int pieces)
+    void LoadDynamicPuzzle(Texture2D tex, string name, int pieces)
     {
-        if (pieces <= 36) return Color.green;      // Fácil (Verde)
-        if (pieces <= 100) return Color.yellow;    // Medio (Amarillo)
-        return Color.red;                          // Difícil (Rojo)
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayButtonClick();
+
+        PuzzleDataCarrier.SetCustomImage(tex);
+        PuzzleDataCarrier.currentPuzzleId = name;
+        PuzzleDataCarrier.currentPuzzleName = name;
+        PuzzleDataCarrier.isCustomPuzzle = false;
+
+        int cols = Mathf.CeilToInt(Mathf.Sqrt(pieces));
+        int rows = Mathf.CeilToInt((float)pieces / cols);
+        PuzzleDataCarrier.columns = cols;
+        PuzzleDataCarrier.rows = rows;
+
+        SceneManager.LoadScene("GameScene");
     }
 }

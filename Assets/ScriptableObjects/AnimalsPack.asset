@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PuzzleLevelData
   packName: Animales
   puzzles:
-  - puzzleName: Leopardo
+  - puzzleName: Leopard
     puzzleImage: {fileID: 21300000, guid: b94aad122ed7ddb4a8acb89127897a08, type: 3}
     defaultPieces: 16
-  - puzzleName: Zorro
+  - puzzleName: Fox
     puzzleImage: {fileID: 21300000, guid: bad41e9fc8e62ec46a3a58c9eaa0d04e, type: 3}
     defaultPieces: 100

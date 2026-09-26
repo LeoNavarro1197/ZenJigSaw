@@ -1,5 +1,7 @@
-using UnityEngine;
+using Firebase.Firestore;
 using System.IO;
+using Unity.Burst.CompilerServices;
+using UnityEngine;
 
 [System.Serializable]
 public class PuzzleSaveData
@@ -9,20 +11,24 @@ public class PuzzleSaveData
     public string customImagePath = "";
     public int cols = 0; // NUEVO
     public int rows = 0; // NUEVO
+    public int hintsRemaining = 5; // NUEVO: Guardar ayudas
+    public long lastPlayedTimestamp = 0;
 }
 
 public static class SaveSystem
 {
     // Guarda el progreso de un rompecabezas específico por su nombre/ID
-    public static void SavePuzzle(string puzzleId, int[] placedIndices, bool isCompleted, string imagePath = "", int cols = 0, int rows = 0)
+    public static void SavePuzzle(string puzzleId, int[] placedIndices, bool isCompleted, string imagePath = "", int cols = 0, int rows = 0, int hints = 5, long timestamp = 0)
     {
         PuzzleSaveData data = new PuzzleSaveData
         {
             placedPiecesIndices = placedIndices,
             isCompleted = isCompleted,
             customImagePath = imagePath,
-            cols = cols, // NUEVO
-            rows = rows  // NUEVO
+            cols = cols,
+            rows = rows,
+            hintsRemaining = hints,
+            lastPlayedTimestamp = timestamp
         };
 
         string json = JsonUtility.ToJson(data, true);

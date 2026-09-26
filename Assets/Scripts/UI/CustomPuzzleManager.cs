@@ -1,13 +1,12 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using NativeGalleryNamespace;
 
 public class CustomPuzzleManager : MonoBehaviour
 {
     [Header("UI References")]
     public Button startPuzzleButton;
-    public CropManager cropManager; // <-- Arrastraremos aquí el PreviewArea
+    public CropManager cropManager;
 
     [Header("Difficulty Settings")]
     public int[] difficultyOptions = { 16, 36, 64, 100, 144, 225 };
@@ -17,7 +16,9 @@ public class CustomPuzzleManager : MonoBehaviour
     {
         if (startPuzzleButton != null)
         {
-            startPuzzleButton.gameObject.SetActive(false);
+            // 1. El botón ESTÁ VISIBLE, pero DESACTIVADO (en gris)
+            startPuzzleButton.gameObject.SetActive(true);
+            startPuzzleButton.interactable = false;
             startPuzzleButton.onClick.AddListener(StartGame);
         }
     }
@@ -40,18 +41,18 @@ public class CustomPuzzleManager : MonoBehaviour
                 // Inicializamos el recortador visual con la foto
                 cropManager.Initialize(texture);
 
-                // Activamos el botón de empezar
-                startPuzzleButton.gameObject.SetActive(true);
+                // 2. ¡El jugador ya subió la foto! ACTIVAMOS el botón
+                startPuzzleButton.interactable = true;
             }
         }, "Selecciona una foto para tu rompecabezas", "image/*");
     }
 
     public void StartGame()
     {
-        // 1. Obtenemos la foto ya recortada en cuadrado perfecto
+        // 1. Obtenemos la foto ya recortada
         Texture2D finalCroppedImage = cropManager.GetCroppedTexture();
 
-        // 2. Guardamos la foto en el teléfono como JPG
+        // 2. La guardamos en el teléfono como JPG
         byte[] jpgBytes = finalCroppedImage.EncodeToJPG();
         string customId = "Custom_" + System.DateTime.Now.Ticks;
         string imgPath = System.IO.Path.Combine(Application.persistentDataPath, customId + ".jpg");
@@ -61,8 +62,8 @@ public class CustomPuzzleManager : MonoBehaviour
         PuzzleDataCarrier.SetCustomImage(finalCroppedImage);
         PuzzleDataCarrier.currentPuzzleId = customId;
         PuzzleDataCarrier.currentPuzzleName = "Mi Foto";
-        PuzzleDataCarrier.isCustomPuzzle = true; // Marcamos que es custom
-        PuzzleDataCarrier.customImagePath = imgPath; // Guardamos la ruta
+        PuzzleDataCarrier.isCustomPuzzle = true;
+        PuzzleDataCarrier.customImagePath = imgPath;
 
         // 4. Calculamos la dificultad
         int totalPieces = selectedDifficulty;

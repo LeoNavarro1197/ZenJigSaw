@@ -32,8 +32,12 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
     public void OnPointerDown(PointerEventData eventData)
     {
         if (isPlacedCorrectly) return;
-        // Solo damos feedback visual de que la tocamos
+
+        // Ya NO ponemos blocksRaycasts = false aquí, para no romper el arrastre
         canvasGroup.alpha = 0.7f;
+
+        // SONIDO AL AGARRAR
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayPickup();
     }
 
     // Se llama JUSTO cuando el dedo/ratón empieza a moverse
@@ -59,10 +63,20 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
             // Si estaba en la bandeja, la cambiamos al tablero y le damos su tamaño correcto
             if (isInTray)
             {
+                // 1. Guardamos la posición en el mundo real (pantalla) antes de cambiar de padre
                 Vector3 worldPos = transform.position;
-                transform.SetParent(PuzzleManager.Instance.boardArea, true);
-                rectTransform.sizeDelta = boardSize;
+
+                // 2. Cambiamos de padre con 'false' para que NO modifique nuestra escala
+                transform.SetParent(PuzzleManager.Instance.boardArea, false);
+
+                // 3. Forzamos la escala a 100% (¡ESTO ARREGLA EL BUG DEL ZOOM!)
+                rectTransform.localScale = Vector3.one;
+
+                // 4. Restauramos la posición en el mundo para que no haya ningún salto visual
                 transform.position = worldPos;
+
+                // 5. Le damos su tamaño de tablero
+                rectTransform.sizeDelta = boardSize;
             }
 
             // Calculamos el offset (sin importar si vino de la bandeja o ya estaba en el tablero)
@@ -117,7 +131,7 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
 
             float distance = Vector2.Distance(rectTransform.anchoredPosition, correctPosition);
 
-            Debug.Log($"Distancia: {distance} | Requerida: {snapDistance} | Pos Actual: {rectTransform.anchoredPosition} | Pos Correcta: {correctPosition}");
+            // Debug.Log($"Distancia: {distance} | Requerida: {snapDistance} | Pos Actual: {rectTransform.anchoredPosition} | Pos Correcta: {correctPosition}");
 
             if (distance <= snapDistance)
             {
@@ -125,6 +139,13 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
                 canvasGroup.blocksRaycasts = false;
                 rectTransform.DOAnchorPos(correctPosition, 0.2f).SetEase(Ease.OutBack);
                 transform.DOScale(1.1f, 0.1f).OnComplete(() => transform.DOScale(1f, 0.1f));
+
+                // ¡VIBRACIÓN AL ENCAJAR!
+                if (HapticManager.Instance != null) HapticManager.Instance.TriggerLightVibration();
+
+                // SONIDO AL ENCAJAR
+                if (AudioManager.Instance != null) AudioManager.Instance.PlaySnap();
+
                 PuzzleManager.Instance.PiecePlaced();
             }
         }
@@ -139,12 +160,19 @@ public class PuzzlePiece : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
         canvasGroup.blocksRaycasts = false;
 
         // La sacamos de la bandeja y la pasamos al tablero
-        transform.SetParent(PuzzleManager.Instance.boardArea, true);
+        // Usamos 'false' para que no herede escalas raras
+        transform.SetParent(PuzzleManager.Instance.boardArea, false);
+
+        // ¡Forzamos escala 100%!
+        rectTransform.localScale = Vector3.one;
         rectTransform.sizeDelta = boardSize;
 
         // Animación suave hacia su posición correcta
         rectTransform.DOAnchorPos(correctPosition, 0.3f).SetEase(Ease.OutBack);
         transform.DOScale(1.1f, 0.1f).OnComplete(() => transform.DOScale(1f, 0.1f));
+
+        // Suena el "Click" de encaje
+        if (AudioManager.Instance != null) AudioManager.Instance.PlaySnap();
 
         // Avisamos al Manager que una ficha más fue colocada
         PuzzleManager.Instance.PiecePlaced();

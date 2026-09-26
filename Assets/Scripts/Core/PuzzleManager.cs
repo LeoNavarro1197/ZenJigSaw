@@ -1,12 +1,17 @@
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq; // Necesario para buscar fichas fácilmente
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Linq; // Necesario para buscar fichas fácilmente
 
 public class PuzzleManager : MonoBehaviour
 {
     // Singleton para que las fichas puedan llamarlo
     public static PuzzleManager Instance;
+
+    [Header("Configuración de Ayudas")]
+    public int hintsRemaining = 5; // 5 ayudas iniciales
 
     [Header("Configuración del Tablero")]
     public Texture2D imageToSlice;
@@ -35,6 +40,11 @@ public class PuzzleManager : MonoBehaviour
     public Sprite[] availableBackgrounds; // Arrastraremos aquí las texturas de madera, corcho, etc.
     public Image boardImage;
 
+    [Header("UI de Ayudas")]
+    public TextMeshProUGUI hintsCounterText;
+    public GameObject hintAdPopup;
+    public Button hintButton; // ¡NUEVO! Arrastraremos aquí el botón de Ayuda
+
     private const string BG_PREF_KEY = "SelectedBackgroundIndex"; // Clave para guardar
 
     private int totalPieces;
@@ -57,6 +67,9 @@ public class PuzzleManager : MonoBehaviour
         // 1. Mostramos el panel de carga
         if (loadingPanel != null) loadingPanel.SetActive(true);
 
+        // ¡NUEVO! Bloqueamos el botón de ayuda mientras carga
+        if (hintButton != null) hintButton.interactable = false;
+
         // 2. Esperamos un fotograma para que Unity dibuje el panel en pantalla
         yield return null;
 
@@ -77,10 +90,17 @@ public class PuzzleManager : MonoBehaviour
         // Cargar el fondo guardado por el jugador
         LoadSavedBackground();
 
-        // 4. Generamos las fichas y cargamos el progreso (¡Solo una vez!)
+        // 4. Generamos las fichas y cargamos el progreso
         GeneratePuzzle();
-        LoadSavedProgress();
+        StartCoroutine(LoadSavedProgress());
 
+        // ¡NUEVO! Forzamos a Unity a calcular el ancho real de la bandeja AHORA MISMO
+        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(trayScrollRect.content);
+
+        // Esperamos un fotograma para que el Scroll Rect se actualice con el nuevo ancho
+        yield return null;
+
+        // Ahora sí, lo mandamos a la izquierda
         if (trayScrollRect != null)
         {
             trayScrollRect.horizontalNormalizedPosition = 0f;
@@ -88,6 +108,23 @@ public class PuzzleManager : MonoBehaviour
 
         // 5. Ocultamos el panel de carga
         if (loadingPanel != null) loadingPanel.SetActive(false);
+
+        // ¡NUEVO! Inicializar el texto de ayudas
+        UpdateHintsUI();
+
+        // ¡NUEVO! Mostrar anuncio interstitial al empezar
+        if (AdsManager.Instance != null && PlayerPrefs.GetInt("HasPlayedOnce", 0) == 1)
+        {
+            AdsManager.Instance.ShowInterstitial();
+        }
+
+        // ¡NUEVO! Asegurarnos de que el banner de Google se vea en el tablero
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.ShowBanner();
+        }
+
+        PlayerPrefs.SetInt("HasPlayedOnce", 1); // Marcamos que ya jugó al menos una vez
     }
 
     void GeneratePuzzle()
@@ -185,25 +222,50 @@ public class PuzzleManager : MonoBehaviour
 
         string imgPath = PuzzleDataCarrier.isCustomPuzzle ? PuzzleDataCarrier.customImagePath : "";
 
-        // NUEVO: Pasamos columns y rows al guardar
-        SaveSystem.SavePuzzle(PuzzleDataCarrier.currentPuzzleId, placedIndices.ToArray(), placedPieces >= totalPieces, imgPath, PuzzleDataCarrier.columns, PuzzleDataCarrier.rows);
+        // NUEVO: Obtenemos la fecha y hora actual del teléfono
+        long currentTimestamp = System.DateTime.UtcNow.Ticks;
+
+        // Se la pasamos al SaveSystem al final
+        SaveSystem.SavePuzzle(PuzzleDataCarrier.currentPuzzleId, placedIndices.ToArray(), placedPieces >= totalPieces, imgPath, PuzzleDataCarrier.columns, PuzzleDataCarrier.rows, hintsRemaining, currentTimestamp);
     }
 
-    void LoadSavedProgress()
+    // ¡AHORA ES UNA CORRUTINA!
+    IEnumerator LoadSavedProgress()
     {
         PuzzleSaveData data = SaveSystem.LoadPuzzle(PuzzleDataCarrier.currentPuzzleId);
         if (data != null)
         {
+            // 1. ¡NUEVO! Actualizamos las ayudas inmediatamente antes de mover fichas
+            if (data.hintsRemaining >= 0 && !data.isCompleted)
+            {
+                hintsRemaining = data.hintsRemaining;
+            }
+            else if (data.isCompleted)
+            {
+                hintsRemaining = 0; // Si está completado, no tiene ayudas
+            }
+            UpdateHintsUI(); // Ponemos el número real en la UI al instante
+
+            // 2. Ponemos las fichas una por una
             foreach (int savedID in data.placedPiecesIndices)
             {
                 PuzzlePiece pieceToPlace = allPieces.Find(p => p.pieceID == savedID);
                 if (pieceToPlace != null && !pieceToPlace.isPlacedCorrectly)
                 {
                     pieceToPlace.PlaceAutomatically();
+                    yield return new WaitForSeconds(0.05f);
                 }
             }
+
             if (data.isCompleted && placedPieces >= totalPieces) WinGame();
         }
+        else
+        {
+            UpdateHintsUI(); // Si es un puzzle nuevo, mostramos las 5 ayudas
+        }
+
+        // 3. ¡NUEVO! Cuando termina de cargar todo, desbloqueamos el botón
+        if (hintButton != null) hintButton.interactable = true;
     }
 
     // Método para mezclar el orden visual de las fichas en la bandeja
@@ -229,6 +291,10 @@ public class PuzzleManager : MonoBehaviour
     void WinGame()
     {
         Debug.Log("¡ROMPECABEZAS COMPLETADO!");
+
+        // SONIDO DE VICTORIA
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayVictory();
+
         if (winPanel != null)
         {
             winPanel.SetActive(true);
@@ -242,8 +308,13 @@ public class PuzzleManager : MonoBehaviour
         {
             if (!piece.isPlacedCorrectly)
             {
-                piece.transform.SetParent(trayContent);
+                // La devolvemos a la bandeja con 'false' para que no herede escalas raras
+                piece.transform.SetParent(trayContent, false);
                 piece.transform.SetAsFirstSibling();
+
+                // Forzamos su escala a 100% (¡ESTO ARREGLA EL BUG DEL ZOOM!)
+                piece.transform.localScale = Vector3.one;
+
                 // Devolvemos su tamaño al tamaño fijo de la bandeja
                 piece.GetComponent<RectTransform>().sizeDelta = trayPieceSize;
             }
@@ -266,7 +337,26 @@ public class PuzzleManager : MonoBehaviour
     // Función del botón de Ayuda (Hint)
     public void UseHint()
     {
-        // 1. Calculamos cuántas fichas colocar según el total (basado en nuestro GDD)
+        // 1. Si le quedan ayudas, las usa
+        if (hintsRemaining > 0)
+        {
+            hintsRemaining--;
+            UpdateHintsUI();
+
+            // Iniciamos la corrutina para que suenen una por una
+            StartCoroutine(PlaceHintPiecesRoutine());
+        }
+        // 2. Si NO le quedan ayudas, abrimos el Popup
+        else
+        {
+            if (hintAdPopup != null) hintAdPopup.SetActive(true);
+        }
+    }
+
+    // ¡NUEVA CORRUTINA! Coloca las fichas poco a poco para que el sonido no sature
+    IEnumerator PlaceHintPiecesRoutine()
+    {
+        // 1. Calculamos cuántas fichas colocar
         int piecesToPlace = 1;
         if (totalPieces >= 225) piecesToPlace = 10;
         else if (totalPieces >= 144) piecesToPlace = 6;
@@ -283,10 +373,32 @@ public class PuzzleManager : MonoBehaviour
             int randomIndex = Random.Range(0, unplacedPieces.Count);
             PuzzlePiece pieceToPlace = unplacedPieces[randomIndex];
 
-            // La colocamos y la quitamos de la lista de pendientes
-            pieceToPlace.PlaceAutomatically();
+            pieceToPlace.PlaceAutomatically(); // Esto reproduce el sonido "Snap"
             unplacedPieces.RemoveAt(randomIndex);
+
+            // Esperamos un microsegundo antes de poner la siguiente
+            yield return new WaitForSeconds(0.1f);
         }
+    }
+
+    // Función del botón "Ver Video" dentro del Popup
+    public void ConfirmWatchAdForHint()
+    {
+        if (hintAdPopup != null) hintAdPopup.SetActive(false); // Cerramos el popup
+
+        AdsManager.Instance.ShowRewardedAd(() =>
+        {
+            // El video terminó. Le damos SOLO 1 ayuda.
+            hintsRemaining = 1;
+            UpdateHintsUI(); // Actualizamos el texto (0 -> 1)
+            UseHint(); // Y usamos esa ayuda directamente
+        });
+    }
+
+    // Función del botón "No, gracias" dentro del Popup
+    public void CloseHintPopup()
+    {
+        if (hintAdPopup != null) hintAdPopup.SetActive(false);
     }
 
     // Esta función la llamará el Popup cuando el jugador elija un fondo
@@ -315,6 +427,16 @@ public class PuzzleManager : MonoBehaviour
 
             boardImage.sprite = availableBackgrounds[savedIndex];
             boardImage.color = Color.white;
+        }
+    }
+
+    public void UpdateHintsUI()
+    {
+        if (hintsCounterText != null)
+        {
+            hintsCounterText.text = hintsRemaining.ToString();
+            // Si no le quedan ayudas, ponemos el texto en rojo
+            //hintsCounterText.color = hintsRemaining > 0 ? Color.black : Color.red;
         }
     }
 

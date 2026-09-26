@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "220355573625",
+    "project_id": "rompecabezaszenjigsaw",
+    "storage_bucket": "rompecabezaszenjigsaw.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:220355573625:android:48c0f7ced1e1245f2221a8",
+        "android_client_info": {
+          "package_name": "com.gasstation.zenjigsaw"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmUt0ANnNWAc6M70OQYEdtM5LA_NlSx3Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

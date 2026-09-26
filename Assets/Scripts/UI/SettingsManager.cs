@@ -27,13 +27,21 @@ public class SettingsManager : MonoBehaviour
 
     public void RemoveAds()
     {
-        // Esto lo programaremos en la Fase 5 con Unity IAP
-        Debug.Log("Comprando Quitar Anuncios...");
+        if (IAPManager.Instance != null)
+        {
+            IAPManager.Instance.BuyRemoveAds();
+        }
+        else
+        {
+            Debug.Log("IAPManager no encontrado.");
+        }
     }
 
     public void RestoreAds()
     {
-        // Esto lo programaremos en la Fase 5 con Unity IAP
-        Debug.Log("Restaurando Compras...");
+        if (IAPManager.Instance != null)
+        {
+            IAPManager.Instance.RestorePurchases();
+        }
     }
 }

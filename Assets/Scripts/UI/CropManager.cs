@@ -31,6 +31,7 @@ public class CropManager : MonoBehaviour, IDragHandler
 
         displayImage.rectTransform.sizeDelta = imageSizeUI;
         displayImage.rectTransform.anchoredPosition = Vector2.zero; // Centrada
+        Color c = displayImage.color; c.a = 1f; displayImage.color = c; // Hacemos visible la foto
     }
 
     public void OnDrag(PointerEventData eventData)

@@ -10,7 +10,6 @@ public class MenuNavigator : MonoBehaviour
 
     void Start()
     {
-        // Al iniciar, mostramos el Home
         ShowHome();
     }
 
@@ -20,6 +19,12 @@ public class MenuNavigator : MonoBehaviour
         customScreen.SetActive(false);
         collectionScreen.SetActive(false);
         meScreen.SetActive(false);
+
+        // Refresca la cuadrícula al volver a Home
+        if (HomeManager.Instance != null)
+        {
+            HomeManager.Instance.GenerateHomeGrid(HomeManager.Instance.currentFilter);
+        }
     }
 
     public void ShowCustom()
