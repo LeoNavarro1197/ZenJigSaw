@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq; // Necesario para buscar fichas fácilmente
@@ -145,12 +146,13 @@ public class PuzzleManager : MonoBehaviour
         // 2. Inicializamos las pestañas matemáticas
         ImageSlicer.InitTabs(columns, rows);
 
-        // 3. Cortamos la imagen (¡Ya no necesitamos máscara!)
-        Sprite[] sprites = ImageSlicer.Slice(imageToSlice, columns, rows);
-
-        // 4. Tamaño matemático base (Forzado a ser cuadrado perfecto)
+        // Calculamos el tamaño visual (1.5 veces el tamaño matemático) que le pasamos al Slicer
         float minBoardSize = Mathf.Min(boardArea.rect.width, boardArea.rect.height);
         float pieceWidth = minBoardSize / columns;
+        float visualSize = pieceWidth * 1.5f;
+
+        Sprite[] sprites = ImageSlicer.Slice(imageToSlice, columns, rows, visualSize);
+
         float pieceHeight = minBoardSize / rows;
 
         for (int i = 0; i < sprites.Length; i++)
@@ -301,37 +303,102 @@ public class PuzzleManager : MonoBehaviour
         }
     }
 
-    // Función del botón "Limpiar"
+    // Función del botón "Limpiar" (Con Animación en World Space)
     public void ClearUnplacedPieces()
     {
+        // 1. Desactivamos el Layout Group para que no mueva las fichas de golpe
+        HorizontalLayoutGroup layout = trayContent.GetComponent<HorizontalLayoutGroup>();
+        ContentSizeFitter fitter = trayContent.GetComponent<ContentSizeFitter>();
+        if (layout != null) layout.enabled = false;
+        if (fitter != null) fitter.enabled = false;
+
+        // 2. Buscamos la posición WORLD (Mundo) del centro de la bandeja visible
+        Vector3 trayWorldPos = trayScrollRect.transform.position;
+
         foreach (PuzzlePiece piece in allPieces)
         {
             if (!piece.isPlacedCorrectly)
             {
-                // La devolvemos a la bandeja con 'false' para que no herede escalas raras
-                piece.transform.SetParent(trayContent, false);
-                piece.transform.SetAsFirstSibling();
+                // Si la ficha ya está en la bandeja, no la animamos
+                if (piece.transform.parent == trayContent) continue;
 
-                // Forzamos su escala a 100% (¡ESTO ARREGLA EL BUG DEL ZOOM!)
-                piece.transform.localScale = Vector3.one;
+                RectTransform rt = piece.GetComponent<RectTransform>();
 
-                // Devolvemos su tamaño al tamaño fijo de la bandeja
-                piece.GetComponent<RectTransform>().sizeDelta = trayPieceSize;
+                // 3. Calculamos la escala para que se encoga al tamaño de la bandeja
+                float scaleMultiplier = trayPieceSize.x / rt.sizeDelta.x;
+                Vector3 targetScale = rt.localScale * scaleMultiplier;
+
+                // 4. Animamos usando DOMove (Posición Mundial) en vez de AnchorPos
+                rt.DOMove(trayWorldPos, 0.3f).SetEase(Ease.InBack);
+                rt.DOScale(targetScale, 0.3f).SetEase(Ease.OutQuad).OnComplete(() =>
+                {
+                    // 5. Cuando termina el vuelo, la metemos a la bandeja
+                    rt.SetParent(trayContent, true);
+                    rt.localScale = Vector3.one;
+                    rt.sizeDelta = trayPieceSize;
+                });
             }
         }
+
+        // 6. Después de la animación, volvemos a encender el Layout Group
+        StartCoroutine(RebuildTrayAfterDelay(0.35f, layout, fitter));
     }
+
+    // Corrutina para arreglar el Layout Group después de la animación
+    IEnumerator RebuildTrayAfterDelay(float delay, HorizontalLayoutGroup layout, ContentSizeFitter fitter)
+    {
+        yield return new WaitForSeconds(delay);
+
+        // Encendemos el Layout Group
+        if (layout != null) layout.enabled = true;
+        if (fitter != null) fitter.enabled = true;
+
+        // Forzamos a la bandeja a recalcular su tamaño y ordenar las fichas
+        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(trayContent);
+
+        if (trayScrollRect != null)
+        {
+            trayScrollRect.horizontalNormalizedPosition = 0f;
+        }
+    }
+
+    // Variables para guardar la posición del scroll
+    private float savedScrollPosition = 0f;
 
     // Función para ocultar o mostrar todas las fichas
     public void SetPiecesVisibility(bool isVisible)
     {
+        // 1. Si vamos a OCULTAR las fichas, guardamos dónde estaba el scroll
+        if (!isVisible && trayScrollRect != null)
+        {
+            savedScrollPosition = trayScrollRect.horizontalNormalizedPosition;
+        }
+
+        // 2. Ocultamos o mostramos las fichas
         foreach (PuzzlePiece piece in allPieces)
         {
-            // Si la ficha ya fue colocada correctamente, no la ocultamos
             if (!piece.isPlacedCorrectly)
             {
                 piece.gameObject.SetActive(isVisible);
             }
         }
+
+        // 3. Si vamos a MOSTRAR las fichas, esperamos un frame y restauramos el scroll
+        if (isVisible && trayScrollRect != null)
+        {
+            StartCoroutine(RestoreScrollPosition());
+        }
+    }
+
+    // Corrutina para restaurar el scroll después de que el Layout se recalcule
+    IEnumerator RestoreScrollPosition()
+    {
+        // Esperamos un frame para que el Content Size Fitter calcule el nuevo ancho
+        yield return null;
+
+        // Forzamos a recalcular y restauramos la posición guardada
+        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(trayScrollRect.content);
+        trayScrollRect.horizontalNormalizedPosition = savedScrollPosition;
     }
 
     // Función del botón de Ayuda (Hint)

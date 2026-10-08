@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cbe902e387a22b46af3c5f33c96203c, type: 3}
+  m_Name: CityPack
+  m_EditorClassIdentifier: Assembly-CSharp::PuzzleLevelData
+  packName: Viajes
+  puzzles:
+  - puzzleName: Medieval Street
+    puzzleImage: {fileID: -855298285791758126, guid: f11246c06ea17c14a86267469580a90b, type: 3}
+    defaultPieces: 16
+  - puzzleName: Temple Steps
+    puzzleImage: {fileID: 6937817954938267909, guid: c9d23e22a944c5f449853f5c3cfbb7d0, type: 3}
+    defaultPieces: 36
+  - puzzleName: Greek Alley
+    puzzleImage: {fileID: -4178046375966092550, guid: d291f8439fac70644bb3b5163a2a6a21, type: 3}
+    defaultPieces: 64
+  - puzzleName: Spice Market
+    puzzleImage: {fileID: -6470460504253458178, guid: ba6762451dc64de4fbcf23b1d882b913, type: 3}
+    defaultPieces: 100
+  - puzzleName: Hidden Canal
+    puzzleImage: {fileID: 4130640169021434097, guid: 111b6a805553ea84cbf097e2836032ce, type: 3}
+    defaultPieces: 144

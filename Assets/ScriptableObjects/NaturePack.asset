@@ -12,14 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5cbe902e387a22b46af3c5f33c96203c, type: 3}
   m_Name: NaturePack
   m_EditorClassIdentifier: Assembly-CSharp::PuzzleLevelData
-  packName: Naturaleza
+  packName: Paisajes
   puzzles:
-  - puzzleName: Landscape
-    puzzleImage: {fileID: 21300000, guid: 71ca3e3c107257d4491f6d59735cb785, type: 3}
+  - puzzleName: Kirkjufell Iceland
+    puzzleImage: {fileID: -855298285791758126, guid: c152cd198a83e2c448d719b6729588f0, type: 3}
     defaultPieces: 16
-  - puzzleName: Tree
-    puzzleImage: {fileID: 21300000, guid: 95baf37fb2f816e4bbd233049d644fb5, type: 3}
+  - puzzleName: Plitvice Lakes
+    puzzleImage: {fileID: 7028616704906629411, guid: 4cccedce7f81238439ce4e8e2f35a658, type: 3}
+    defaultPieces: 36
+  - puzzleName: Yosemite Valley
+    puzzleImage: {fileID: 6937817954938267909, guid: f87996c19d2a1c9498f450eabbc28896, type: 3}
     defaultPieces: 64
-  - puzzleName: Tables
-    puzzleImage: {fileID: 21300000, guid: 59a254dd4b7745445a98954df3d721b1, type: 3}
-    defaultPieces: 255
+  - puzzleName: Arashiyama Bamboo
+    puzzleImage: {fileID: -4178046375966092550, guid: 9e8057edba1969346b9a690dfb11b881, type: 3}
+    defaultPieces: 100
+  - puzzleName: Cliffs Moher
+    puzzleImage: {fileID: 3465286685962602723, guid: 3345b25e071a39b44b1eb43d98a97673, type: 3}
+    defaultPieces: 144

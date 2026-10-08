@@ -9,7 +9,7 @@ public class CustomPuzzleManager : MonoBehaviour
     public CropManager cropManager;
 
     [Header("Difficulty Settings")]
-    public int[] difficultyOptions = { 16, 36, 64, 100, 144, 225 };
+    public int[] difficultyOptions = { 16, 36, 64, 100, 121, 144 };
     private int selectedDifficulty = 64;
 
     void Start()
@@ -44,7 +44,7 @@ public class CustomPuzzleManager : MonoBehaviour
                 // 2. ¡El jugador ya subió la foto! ACTIVAMOS el botón
                 startPuzzleButton.interactable = true;
             }
-        }, "Selecciona una foto para tu rompecabezas", "image/*");
+        }, "Select Image", "image/*");
     }
 
     public void StartGame()
@@ -61,7 +61,7 @@ public class CustomPuzzleManager : MonoBehaviour
         // 3. Enviamos los datos al juego
         PuzzleDataCarrier.SetCustomImage(finalCroppedImage);
         PuzzleDataCarrier.currentPuzzleId = customId;
-        PuzzleDataCarrier.currentPuzzleName = "Mi Foto";
+        PuzzleDataCarrier.currentPuzzleName = "My Picture";
         PuzzleDataCarrier.isCustomPuzzle = true;
         PuzzleDataCarrier.customImagePath = imgPath;
 

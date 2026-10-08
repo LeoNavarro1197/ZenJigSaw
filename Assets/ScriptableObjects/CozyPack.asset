@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cbe902e387a22b46af3c5f33c96203c, type: 3}
+  m_Name: CozyPack
+  m_EditorClassIdentifier: Assembly-CSharp::PuzzleLevelData
+  packName: Cozy
+  puzzles:
+  - puzzleName: Rainy Day
+    puzzleImage: {fileID: -855298285791758126, guid: a327397d24195bd45975301baa71d854, type: 3}
+    defaultPieces: 16
+  - puzzleName: Winter Retreat
+    puzzleImage: {fileID: -6470460504253458178, guid: 522d627df9678da488ded3452e54cc85, type: 3}
+    defaultPieces: 36
+  - puzzleName: Autumn Afternoon
+    puzzleImage: {fileID: 6937817954938267909, guid: 87019ed8682fcba479dff498e685ed0d, type: 3}
+    defaultPieces: 64
+  - puzzleName: Clay Studio
+    puzzleImage: {fileID: 4130640169021434097, guid: 4ffe1f6ba2674364aa0d8fe4c3277dec, type: 3}
+    defaultPieces: 100
+  - puzzleName: Urban Sunset
+    puzzleImage: {fileID: -4178046375966092550, guid: df1db7bbba48572468be601eb187f6a0, type: 3}
+    defaultPieces: 144

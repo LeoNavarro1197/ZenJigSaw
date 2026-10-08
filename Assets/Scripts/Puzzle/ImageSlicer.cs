@@ -2,7 +2,6 @@ using UnityEngine;
 
 public static class ImageSlicer
 {
-    // Almacena las pestañas para que las fichas coincidan entre sí
     private static int[,] rightTabs;
     private static int[,] leftTabs;
     private static int[,] topTabs;
@@ -19,13 +18,12 @@ public static class ImageSlicer
         {
             for (int c = 0; c < cols; c++)
             {
-                // Bordes del tablero siempre rectos (0)
                 if (c == cols - 1) rightTabs[c, r] = 0;
                 else
                 {
                     int t = Random.Range(0, 2) == 0 ? 1 : -1;
                     rightTabs[c, r] = t;
-                    leftTabs[c + 1, r] = -t; // La ficha de la derecha necesita el hueco
+                    leftTabs[c + 1, r] = -t;
                 }
 
                 if (r == rows - 1) topTabs[c, r] = 0;
@@ -33,13 +31,13 @@ public static class ImageSlicer
                 {
                     int t = Random.Range(0, 2) == 0 ? 1 : -1;
                     topTabs[c, r] = t;
-                    bottomTabs[c, r + 1] = -t; // La ficha de abajo necesita el hueco
+                    bottomTabs[c, r + 1] = -t;
                 }
             }
         }
     }
 
-    public static Sprite[] Slice(Texture2D image, int columns, int rows)
+    public static Sprite[] Slice(Texture2D image, int columns, int rows, float visualSize)
     {
         if (image == null || !image.isReadable) return null;
 
@@ -48,8 +46,6 @@ public static class ImageSlicer
         int offsetY = (image.height - squareSize) / 2;
 
         int pieceSize = squareSize / columns;
-
-        // Padding del 25% para que las pestañas circulares quepan
         int padding = pieceSize / 4;
         int texSize = pieceSize + (padding * 2);
 
@@ -70,61 +66,74 @@ public static class ImageSlicer
                 {
                     for (int x = 0; x < texSize; x++)
                     {
-                        int srcX = cellStartX - padding + x;
-                        int srcY = cellStartY - padding + y;
-                        srcX = Mathf.Clamp(srcX, 0, image.width - 1);
-                        srcY = Mathf.Clamp(srcY, 0, image.height - 1);
+                        int srcX = Mathf.Clamp(cellStartX - padding + x, 0, image.width - 1);
+                        int srcY = Mathf.Clamp(cellStartY - padding + y, 0, image.height - 1);
 
                         Color userColor = image.GetPixel(srcX, srcY);
 
-                        // Coordenadas UV locales (0 a 1) para esta ficha
                         float u = (float)(x - padding) / pieceSize;
                         float v = (float)(y - padding) / pieceSize;
 
-                        // ¿Está el píxel dentro de la forma de la ficha?
-                        bool isInside = IsInsidePiece(u, v, col, row, columns, rows);
+                        float coverage = GetPieceCoverage(u, v, col, row, columns, rows, pieceSize);
 
-                        // Si está dentro, usa el color de la foto. Si no, Color.clear (RGB y Alpha a 0)
-                        Color finalColor = isInside ? userColor : Color.clear;
+                        Color finalColor = userColor;
+                        finalColor.a = coverage * userColor.a;
 
                         pixels[y * texSize + x] = finalColor;
                     }
                 }
 
-                // ¡Filtro Point para que los bordes sean nítidos y no queden huecos transparentes!
-                pieceTex.filterMode = FilterMode.Point;
+                pieceTex.filterMode = FilterMode.Bilinear;
                 pieceTex.SetPixels(pixels);
                 pieceTex.Apply();
 
-                // El sprite es texSize, pero el PixelsPerUnit es pieceSize para que el escalado de la UI sea correcto
-                pieces[index] = Sprite.Create(pieceTex, new Rect(0, 0, texSize, texSize), new Vector2(0.5f, 0.5f), pieceSize);
+                float pixelsPerUnit = texSize / visualSize;
+                pieces[index] = Sprite.Create(pieceTex, new Rect(0, 0, texSize, texSize), new Vector2(0.5f, 0.5f), pixelsPerUnit);
                 index++;
             }
         }
         return pieces;
     }
 
-    private static bool IsInsidePiece(float u, float v, int col, int row, int cols, int rows)
+    private static float GetPieceCoverage(float u, float v, int col, int row, int cols, int rows, int pieceSize)
     {
-        // 1. Cuadrado base (0 a 1)
-        bool inBaseSquare = (u >= -0.01f && u <= 1.01f && v >= -0.01f && v <= 1.01f);
-        bool inTab = false;
-        bool inBlank = false;
+        float edge = Mathf.Max(1.5f / pieceSize, 0.015f);
 
-        // 2. Pestañas (Círculos que sobresalen)
-        if (rightTabs[col, row] == 1 && Vector2.Distance(new Vector2(u, v), new Vector2(1f, 0.5f)) < 0.2f) inTab = true;
-        if (leftTabs[col, row] == 1 && Vector2.Distance(new Vector2(u, v), new Vector2(0f, 0.5f)) < 0.2f) inTab = true;
-        if (topTabs[col, row] == 1 && Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 1f)) < 0.2f) inTab = true;
-        if (bottomTabs[col, row] == 1 && Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 0f)) < 0.2f) inTab = true;
+        // ¡LA MAGIA AQUÍ! La pestaña es más grande que el hueco para que no se vea el fondo
+        float tabR = 0.2f;
+        float blankR = tabR - (edge * 1.5f);
 
-        // 3. Huecos (Círculos que se meten hacia adentro)
-        if (rightTabs[col, row] == -1 && Vector2.Distance(new Vector2(u, v), new Vector2(1f, 0.5f)) < 0.2f) inBlank = true;
-        if (leftTabs[col, row] == -1 && Vector2.Distance(new Vector2(u, v), new Vector2(0f, 0.5f)) < 0.2f) inBlank = true;
-        if (topTabs[col, row] == -1 && Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 1f)) < 0.2f) inBlank = true;
-        if (bottomTabs[col, row] == -1 && Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 0f)) < 0.2f) inBlank = true;
+        // 1. Base del cuadrado (con bordes suavizados)
+        float sqAlpha = 1f;
+        sqAlpha *= Mathf.Clamp01((u + edge) / edge);
+        sqAlpha *= Mathf.Clamp01((1 + edge - u) / edge);
+        sqAlpha *= Mathf.Clamp01((v + edge) / edge);
+        sqAlpha *= Mathf.Clamp01((1 + edge - v) / edge);
 
-        // Si está en un hueco, se corta. Si está en la base o en una pestaña, se queda.
-        if (inBlank) return false;
-        return inBaseSquare || inTab;
+        // 2. Pestañas (Unión - Usamos tabR que es más grande)
+        float tabAlpha = 0f;
+        if (rightTabs[col, row] == 1) tabAlpha = Mathf.Max(tabAlpha, CircleCoverage(u, v, 1f, 0.5f, tabR, edge));
+        if (leftTabs[col, row] == 1) tabAlpha = Mathf.Max(tabAlpha, CircleCoverage(u, v, 0f, 0.5f, tabR, edge));
+        if (topTabs[col, row] == 1) tabAlpha = Mathf.Max(tabAlpha, CircleCoverage(u, v, 0.5f, 1f, tabR, edge));
+        if (bottomTabs[col, row] == 1) tabAlpha = Mathf.Max(tabAlpha, CircleCoverage(u, v, 0.5f, 0f, tabR, edge));
+
+        float visibleAlpha = Mathf.Max(sqAlpha, tabAlpha);
+
+        // 3. Huecos (Intersección - Usamos blankR que es más pequeño)
+        float blankAlpha = 1f;
+        if (rightTabs[col, row] == -1) blankAlpha *= 1f - CircleCoverage(u, v, 1f, 0.5f, blankR, edge);
+        if (leftTabs[col, row] == -1) blankAlpha *= 1f - CircleCoverage(u, v, 0f, 0.5f, blankR, edge);
+        if (topTabs[col, row] == -1) blankAlpha *= 1f - CircleCoverage(u, v, 0.5f, 1f, blankR, edge);
+        if (bottomTabs[col, row] == -1) blankAlpha *= 1f - CircleCoverage(u, v, 0.5f, 0f, blankR, edge);
+
+        float alpha = visibleAlpha * blankAlpha;
+
+        return Mathf.Clamp01(alpha);
+    }
+
+    private static float CircleCoverage(float u, float v, float cx, float cy, float radius, float edge)
+    {
+        float d = Vector2.Distance(new Vector2(u, v), new Vector2(cx, cy));
+        return Mathf.Clamp01((radius + edge - d) / edge);
     }
 }

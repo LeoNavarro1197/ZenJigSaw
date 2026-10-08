@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cbe902e387a22b46af3c5f33c96203c, type: 3}
+  m_Name: FlowerPack
+  m_EditorClassIdentifier: Assembly-CSharp::PuzzleLevelData
+  packName: Flores
+  puzzles:
+  - puzzleName: Lavender Fields
+    puzzleImage: {fileID: 4130640169021434097, guid: 36d31d330c979944f858b93761d6a260, type: 3}
+    defaultPieces: 16
+  - puzzleName: Blue Flower
+    puzzleImage: {fileID: 6937817954938267909, guid: 95c38d31f3d1d3045874d47be39d3292, type: 3}
+    defaultPieces: 36
+  - puzzleName: Jungle Bloom
+    puzzleImage: {fileID: -855298285791758126, guid: 8a1e03c2debc1994b8bb2e317ba9632d, type: 3}
+    defaultPieces: 64
+  - puzzleName: Desert Bloom
+    puzzleImage: {fileID: -6470460504253458178, guid: d581ccd58dcd9b84bb09be58fdd38965, type: 3}
+    defaultPieces: 100
+  - puzzleName: Ice Berries
+    puzzleImage: {fileID: -4178046375966092550, guid: 7ee927da19e5c924bbf4c4b509a78828, type: 3}
+    defaultPieces: 144
